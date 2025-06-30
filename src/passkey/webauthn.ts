@@ -220,20 +220,29 @@ export async function connectSmartWalletWithPasskey(
             : 'localhost',
       },
       user: {
+        // OG - maybe static ?
         id: crypto.getRandomValues(new Uint8Array(16)),
         name: 'demo@example.com',
         displayName: 'Demo User',
       },
       pubKeyCredParams: [
         { alg: -7, type: 'public-key' }, // ES256 (P-256)
+        // OG - maybe add algorithms?
+        // { alg: -257, type: "public-key" }, // RS256
       ],
       authenticatorSelection: {
         authenticatorAttachment: 'platform',
-        userVerification: 'required',
+        // userVerification: 'required',
+        userVerification: "preferred",
+        residentKey: "preferred", // Important for passkeys
+        requireResidentKey: false, // For broader compatibility
       },
+      // OG - test ti enable
+      // attestation: "none",
       timeout: 60000,
     },
   }
+
   // Create passkey
   const credential = makeNewKey
     ? await navigator.credentials.create(passkeyData)
