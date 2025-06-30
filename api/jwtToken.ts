@@ -61,10 +61,11 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error(`Response status: ${response.status}`);
     }
 		const dataText = await response.text();
-		console.log("dataText");
-		console.log(dataText);
-		const data = await response.json();
-		res.status(200).json(data);
+		console.log(`dataText (${dataText})`);
+		console.log({dataText});
+		// const data = await response.json();
+		// res.status(200).json(data);
+		res.status(200).json(dataText);
 	} catch (error) {
 		console.log(`Error fetch ${process.env.WALLET_PASS_URL}/wallet-passes`);
 		console.log(postData);
