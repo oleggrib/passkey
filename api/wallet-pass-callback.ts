@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 //import { createApplePass, servePass } from '../src/passkit'
 import { storePass } from '../src/db'
+import { withCORS } from './cors'
 
 // In-memory map of waiting SSE connections
 const sseClients: Record<string, VercelResponse> = {}
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST') {
     // Handle webhook/callback
     const { id, result, signedMessage } = req.body
@@ -16,7 +17,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .json({ error: 'Missing id, result, or signedMessage' })
     }
 
-    await storePass(id, result.id, result.platform, result.fileURL)
+    //await storePass(id, result.id, result.platform, result.fileURL)
+    console.log(`Result: ${JSON.stringify(result)}`)
 
     // If a client is waiting for this id, notify via SSE
     if (sseClients[id]) {
@@ -59,3 +61,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Method not allowed
   return res.status(405).json({ error: 'Method not allowed' })
 }
+
+export default withCORS(handler)

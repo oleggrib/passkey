@@ -1,10 +1,11 @@
 // /api/jwtToken.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getPass, CardCache } from '../src/db'
+import { withCORS } from './cors'
 //import { GoogleAuth } from 'google-auth-library';
 //import jwt from 'jsonwebtoken'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -154,3 +155,5 @@ async function setApplePoints(
   })
   return response.json()
 }
+
+export default withCORS(handler)

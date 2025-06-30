@@ -1,4 +1,10 @@
-import { type Component, Show, onMount } from 'solid-js'
+import {
+  type Component,
+  Show,
+  onMount,
+  createSignal,
+  createMemo,
+} from 'solid-js'
 import { writeClipboard } from '@solid-primitives/clipboard'
 import { Navigate, useLocation } from '@solidjs/router'
 import toast from 'solid-toast'
@@ -6,7 +12,7 @@ import { useAuthData } from '../hooks/localStorage'
 import { truncateMiddle } from '../utils'
 import { useSearchParams } from '@solidjs/router'
 import { passkeyWalletAddress, setPasskeyWalletAddress } from '../passkey/store'
-import { cardId, campaign, updateCardIdAndCampaignFromUrl } from '../card/store'
+import { cardId, updateCardIdAndCampaignFromUrl } from '../card/store'
 
 // Dont need that, QR code can be read by the user. QR code contains card_id and campaign
 
@@ -19,6 +25,9 @@ import { cardId, campaign, updateCardIdAndCampaignFromUrl } from '../card/store'
 
 //construct a pass JSON
 
+// Add a signal for pass loading spinner
+const [isLoadingPass, setIsLoadingPass] = createSignal(false)
+
 function generatePass(
   campaign: string,
   ethAddress: string,
@@ -26,57 +35,74 @@ function generatePass(
   platform: string
 ) {
   return async () => {
+    setIsLoadingPass(true)
     try {
       const externalId = `${cardId}-${ethAddress}`
+      let sseResolved = false
 
-      // Start listening for the SSE event BEFORE triggering the backend
-      const evtSource = new EventSource(
-        `/api/wallet-pass-callback?id=${externalId}`
-      )
+      // Promise that resolves when SSE returns fileURL
+      const ssePromise = new Promise((resolve, reject) => {
+        const evtSource = new EventSource(
+          `/api/wallet-pass-callback?id=${externalId}`
+        )
 
-      evtSource.addEventListener('message', (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          console.log('SSE message:', data)
-          if (data.fileURL) {
-            // Redirect to the pass URL
-            window.location.href = data.fileURL
-            evtSource.close() // Clean up
+        evtSource.addEventListener('message', (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            if (data.fileURL) {
+              sseResolved = true
+              evtSource.close()
+              resolve(data.fileURL)
+            }
+          } catch (err) {
+            evtSource.close()
+            reject(err)
           }
-        } catch (err) {
-          console.error('Error parsing SSE data:', err)
-        }
+        })
+
+        evtSource.addEventListener('error', (event) => {
+          if (!sseResolved) {
+            evtSource.close()
+            reject(new Error('SSE error or timeout'))
+          }
+        })
       })
 
-      evtSource.addEventListener('error', (event) => {
-        console.error('SSE error:', event)
-        evtSource.close()
-      })
+      // Timeout promise
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout waiting for pass')), 10000)
+      )
 
       const url =
         (import.meta.env.VITE_PUBLIC_BACKEND_ROOT ||
           'https://openpasskeywallet-ckb-demo.vercel.app') +
         (platform === 'google' ? '/api/jwtToken' : '/api/generatePkpass')
 
-      console.log(`Request URL: ${url}`)
-      // Now trigger the backend to start the pass creation process
+      // Trigger the backend to start the pass creation process
+
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ campaign, ethAddress, cardId }),
       })
 
-      if (res.ok) {
-        toast.success('Pass created successfully, please wait', {
-          position: 'bottom-center',
-        })
-      }
       if (!res.ok) {
         toast.error('Error: ' + res.statusText, { position: 'bottom-center' })
+        setIsLoadingPass(false)
         return
       }
-    } catch (err) {
-      toast.error('Network error', { position: 'bottom-center' })
+
+      toast.success('Pass created successfully, please wait', {
+        position: 'bottom-center',
+      })
+
+      // Wait for either SSE or timeout
+      const fileURL = await Promise.race([ssePromise, timeoutPromise])
+      window.location.href = fileURL as string
+    } catch (err: any) {
+      toast.error(err.message || 'Network error', { position: 'bottom-center' })
+    } finally {
+      setIsLoadingPass(false)
     }
   }
 }
@@ -122,37 +148,79 @@ function getMobileOS() {
   return 'other'
 }
 
-async function createPassAndListen(
-  campaign: string,
-  ethAddress: string,
-  cardId: string
-) {
-  // Construct the externalId (should match what your backend expects)
-  // Optionally, show a loading indicator while waiting for the SSE event
-}
-
 export const Home: Component = () => {
   // Get campaign marker from navigation state (passed from root)
   const [searchParams] = useSearchParams()
 
+  // State for fetched campaign data
+  const [fetchedCampaign, setFetchedCampaign] = createSignal('')
+  const [isLoadingCampaign, setIsLoadingCampaign] = createSignal(false)
+
+  // Function to fetch campaign data from API
+  const fetchCampaignData = async (cardSlug: string) => {
+    if (!cardSlug) return
+
+    setIsLoadingCampaign(true)
+    try {
+      const cardData = await fetch(
+        `/api/cardData?cardSlug=${encodeURIComponent(cardSlug)}`
+      )
+      if (cardData.ok) {
+        const data = await cardData.json()
+        console.log('Fetched card data:', data)
+        if (data.cardName) {
+          setFetchedCampaign(data.cardName)
+          console.log('Fetched campaign after set:', fetchedCampaign())
+        } else {
+          setFetchedCampaign('No campaign found')
+        }
+      } else {
+        console.error('Failed to fetch card data:', cardData.status)
+      }
+    } catch (error) {
+      console.error('Error fetching campaign data:', error)
+    } finally {
+      setIsLoadingCampaign(false)
+    }
+  }
+
+  // Fetch campaign data when cardId is available
   onMount(() => {
     updateCardIdAndCampaignFromUrl(searchParams)
+    if (cardId()) {
+      console.log('Fetching campaign data for cardId:', cardId())
+      fetchCampaignData(cardId())
+    }
+  })
+
+  // Use fetched campaign data only
+  const displayCampaign = createMemo(() => {
+    const campaign = fetchedCampaign()
+    console.log('Computed display campaign:', campaign)
+    return campaign
   })
 
   const getAndroidPass = generatePass(
-    campaign(),
+    displayCampaign(),
     passkeyWalletAddress.address,
     cardId(),
     'google'
   )
   const getiOSPass = generatePass(
-    campaign(),
+    displayCampaign(),
     passkeyWalletAddress.address,
     cardId(),
     'apple'
   )
 
   const handleClaim = () => {
+    if (isLoadingPass()) {
+      toast.error('Pass generation in progress, please wait', {
+        position: 'bottom-center',
+      })
+      return
+    }
+
     const os = getMobileOS()
     if (os === 'android') {
       getAndroidPass()
@@ -186,14 +254,29 @@ export const Home: Component = () => {
               Copy Address
             </button>
           </div>
-          {campaign && (
+          {displayCampaign() && (
             <div class="stat-desc mt-2 text-md">
-              <span>Campaign: {campaign()}</span>
+              <span>Campaign: {displayCampaign()}</span>
+              {isLoadingCampaign() && (
+                <span class="ml-2 inline-block">
+                  <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                </span>
+              )}
             </div>
           )}
         </div>
-        <button class="btn btn-wide mt-8 btn-primary" onClick={handleClaim}>
-          CLAIM
+        <button
+          class="btn btn-wide mt-8 btn-primary"
+          onClick={handleClaim}
+          disabled={isLoadingPass()}>
+          {isLoadingPass() ? (
+            <span class="flex items-center">
+              <span class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>
+              Generating Pass...
+            </span>
+          ) : (
+            'CLAIM'
+          )}
         </button>
         <button
           class="btn btn-wide btn-outline mt-8"
