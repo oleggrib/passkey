@@ -85,7 +85,7 @@ function generatePass(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // body: JSON.stringify({ campaign, ethAddress, cardId, baseUrl: window.location.origin }),
-        body: JSON.stringify({ campaign, ethAddress, cardId, baseUrl: BACKEND_URL }),
+        body: JSON.stringify({ ethAddress, cardId, baseUrl: BACKEND_URL }),
       })
 
       if (!res.ok) {

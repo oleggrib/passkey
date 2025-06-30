@@ -131,8 +131,8 @@ export const Root: Component = () => {
           evtSource.close()
         })
 
-        const url =
-          platform === 'google' ? '/api/jwtToken' : '/api/generatePkpass'
+        const url = BACKEND_URL + (
+          platform ===  'google' ? '/api/jwtToken' : '/api/generatePkpass')
 
         console.log(`URL: ${url}`)
 
@@ -140,7 +140,7 @@ export const Root: Component = () => {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ campaign, ethAddress, cardId }),
+          body: JSON.stringify({ ethAddress, cardId, baseUrl: BACKEND_URL }),
         })
 
         if (res.ok) {

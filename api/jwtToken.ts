@@ -12,7 +12,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 	// this function now just calls an API service to create a pass
 	// the remote API will call the wallet-pass-callback API to store the pass
 	// @ts-ignore
-	const { campaign, ethAddress, cardId, baseUrl } = req.body;
+	const { ethAddress, cardId, baseUrl } = req.body;
 
 	//need a database of cardId to templateId
 	//TODO: pull this from API, can be supplied to this API from the frontend, so, would need to be given by the cardDetails API
@@ -60,14 +60,14 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       console.log("fetched res not OK...");
       throw new Error(`Response status: ${response.status}`);
     }
+		console.log(`Requested ${process.env.WALLET_PASS_URL}/wallet-passes`);
+		console.log(postData);
 		const dataText = await response.text();
-		console.log(`dataText (${dataText})`);
-		console.log({dataText});
+		console.log(`dataText (${JSON.stringify(dataText)})`);
 		// const data = await response.json();
 		// res.status(200).json(data);
 		res.status(200).json(dataText);
 	} catch (error) {
-		console.log(`Error fetch ${process.env.WALLET_PASS_URL}/wallet-passes`);
 		console.log(postData);
 		console.error(error);
 		res.status(500).json({ error: "Error creating pass" });
