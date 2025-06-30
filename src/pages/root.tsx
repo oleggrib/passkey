@@ -4,6 +4,7 @@ import toast from 'solid-toast'
 import { connectSmartWalletWithPasskey } from '../passkey/webauthn'
 import { passkeyWalletAddress, setPasskeyWalletAddress } from '../passkey/store'
 import { cardId, updateCardId } from '../card/store'
+import { BACKEND_URL } from '../constant'
 
 export const Root: Component = () => {
   const [connectWalletLoading, setConnectWalletLoading] = createSignal(false)
@@ -106,7 +107,7 @@ export const Root: Component = () => {
         console.log(`External ID: ${externalId}`)
 
         // Start listening for the SSE event BEFORE triggering the backend
-        const evtSource = new EventSource(
+        const evtSource = new EventSource(BACKEND_URL + 
           `/api/wallet-pass-callback?id=${externalId}`
         )
 
