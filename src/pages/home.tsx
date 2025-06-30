@@ -44,7 +44,8 @@ function generatePass(
       // Promise that resolves when SSE returns fileURL
       const ssePromise = new Promise((resolve, reject) => {
         const evtSource = new EventSource(
-          BACKEND_URL + `/api/wallet-pass-callback?id=${externalId}`
+          BACKEND_URL + 
+          `/api/wallet-pass-callback?id=${externalId}`
         )
 
         evtSource.addEventListener('message', (event) => {
@@ -83,7 +84,8 @@ function generatePass(
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaign, ethAddress, cardId, baseUrl: window.location.origin }),
+        // body: JSON.stringify({ campaign, ethAddress, cardId, baseUrl: window.location.origin }),
+        body: JSON.stringify({ campaign, ethAddress, cardId, baseUrl: BACKEND_URL }),
       })
 
       if (!res.ok) {
@@ -132,7 +134,7 @@ export const Home: Component = () => {
 
     setIsLoadingCampaign(true)
     try {
-      const cardData = await fetch(
+      const cardData = await fetch(BACKEND_URL +
         `/api/cardData?cardSlug=${encodeURIComponent(cardSlug)}`
       )
       if (cardData.ok) {
@@ -192,13 +194,14 @@ export const Home: Component = () => {
     }
 
     const os = getMobileOS()
-    if (os === 'android') {
-      getAndroidPass()
-    } else if (os === 'ios') {
-      getiOSPass()
-    } else {
-      toast.error(`Unsupported device: ${os}`, { position: 'bottom-center' })
-    }
+    getAndroidPass()
+    // if (os === 'android') {
+    //   getAndroidPass()
+    // } else if (os === 'ios') {
+    //   getiOSPass()
+    // } else {
+    //   toast.error(`Unsupported device: ${os}`, { position: 'bottom-center' })
+    // }
   }
 
   // Hard code to Base Sepolia (if you have a config, otherwise use EthSepolia)

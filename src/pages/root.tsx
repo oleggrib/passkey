@@ -107,7 +107,8 @@ export const Root: Component = () => {
         console.log(`External ID: ${externalId}`)
 
         // Start listening for the SSE event BEFORE triggering the backend
-        const evtSource = new EventSource(BACKEND_URL + 
+        const evtSource = new EventSource(
+          BACKEND_URL + 
           `/api/wallet-pass-callback?id=${externalId}`
         )
 
