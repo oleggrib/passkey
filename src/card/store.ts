@@ -19,12 +19,12 @@ function createStoredSignal(
   return [val, setValueAndStore]
 }
 
-export function updateCardIdAndCampaignFromUrl(searchParams: Params) {
-  const marker = searchParams.campaign
+export function updateCardId(searchParams: Params) {
+  //const marker = searchParams.campaign // Fetch campaign from API
   const cardId = searchParams.card_id
-  if (marker) {
+  /*if (marker) {
     setCampaign(marker)
-  }
+  }*/
 
   if (cardId) {
     setCardId(cardId)
@@ -32,4 +32,4 @@ export function updateCardIdAndCampaignFromUrl(searchParams: Params) {
 }
 
 export const [cardId, setCardId] = createStoredSignal('card_id', '')
-export const [campaign, setCampaign] = createStoredSignal('campaign', '')
+//export const [campaign, setCampaign] = createStoredSignal('campaign', '')

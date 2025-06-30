@@ -12,7 +12,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   // this function now just calls an API service to create a pass
   // the remote API will call the wallet-pass-callback API to store the pass
   // @ts-ignore
-  const { campaign, ethAddress, cardId } = req.body
+  const { campaign, ethAddress, cardId, baseUrl } = req.body
 
   //need a database of cardId to templateId
   //TODO: pull this from API, can be supplied to this API from the frontend, so, would need to be given by the cardDetails API
@@ -20,7 +20,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
   const passPayload = {
     id: `${cardId}-${ethAddress}`,
-    callbackUrl: `${process.env.ROOT_URL}/api/wallet-pass-callback`,
+    callbackUrl: `${baseUrl}/api/wallet-pass-callback`,
     params: {
       templateId: templateId,
       platform: 'google',

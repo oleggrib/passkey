@@ -12,7 +12,7 @@ import { useAuthData } from '../hooks/localStorage'
 import { truncateMiddle } from '../utils'
 import { useSearchParams } from '@solidjs/router'
 import { passkeyWalletAddress, setPasskeyWalletAddress } from '../passkey/store'
-import { cardId, updateCardIdAndCampaignFromUrl } from '../card/store'
+import { cardId, updateCardId } from '../card/store'
 
 // Dont need that, QR code can be read by the user. QR code contains card_id and campaign
 
@@ -70,7 +70,7 @@ function generatePass(
 
       // Timeout promise
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout waiting for pass')), 10000)
+        setTimeout(() => reject(new Error('Timeout waiting for pass')), 10_000)
       )
 
       const url =
@@ -83,7 +83,7 @@ function generatePass(
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaign, ethAddress, cardId }),
+        body: JSON.stringify({ campaign, ethAddress, cardId, baseUrl: window.location.origin }),
       })
 
       if (!res.ok) {
@@ -107,36 +107,6 @@ function generatePass(
   }
 }
 
-function useDownloadPkpass(
-  campaign: string,
-  ethAddress: string,
-  cardId: string
-) {
-  return async () => {
-    // For iOS/Safari, do a direct POST navigation
-    const form = document.createElement('form')
-    form.method = 'POST'
-    form.action = '/api/generatePkpass'
-    form.style.display = 'none'
-
-    const addField = (name: string, value: string) => {
-      const input = document.createElement('input')
-      input.type = 'hidden'
-      input.name = name
-      input.value = value
-      form.append(input)
-    }
-    addField('campaign', campaign)
-    addField('ethAddress', ethAddress)
-    addField('cardId', cardId)
-
-    document.body.append(form)
-    form.submit()
-    form.remove()
-    return
-  }
-}
-
 function getMobileOS() {
   const userAgent = window.navigator.userAgent || ''
   if (/android/i.test(userAgent)) {
@@ -145,7 +115,7 @@ function getMobileOS() {
   if (/iPad|iPhone|iPod/.test(userAgent)) {
     return 'ios'
   }
-  return 'other'
+  return userAgent
 }
 
 export const Home: Component = () => {
@@ -186,7 +156,7 @@ export const Home: Component = () => {
 
   // Fetch campaign data when cardId is available
   onMount(() => {
-    updateCardIdAndCampaignFromUrl(searchParams)
+    updateCardId(searchParams)
     if (cardId()) {
       console.log('Fetching campaign data for cardId:', cardId())
       fetchCampaignData(cardId())
@@ -227,7 +197,7 @@ export const Home: Component = () => {
     } else if (os === 'ios') {
       getiOSPass()
     } else {
-      toast.error('Unsupported device', { position: 'bottom-center' })
+      toast.error(`Unsupported device: ${os}`, { position: 'bottom-center' })
     }
   }
 
